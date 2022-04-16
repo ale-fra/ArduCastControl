@@ -324,13 +324,13 @@ public:
    * Title of song currently playing or "" if nothing is reported.
    * Note that this is an UTF8 string
    */
-  char title[50];
+  char title[200];
   
   /**
    * Artist of song currently playing or "" if nothing is reported.
    * Note that this is an UTF8 string
    */
-  char artist[50];
+  char artist[200];
 
   /**
    * Constructor
