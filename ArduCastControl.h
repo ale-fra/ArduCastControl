@@ -10,7 +10,6 @@
 
 #include "pb.h"
 
-
 /**
  * Buffer size for JSON deconding used with ArduinoJson's dynamic allocation.
  * Allocated from heap.
@@ -27,7 +26,7 @@
  */
 #ifndef CONNBUFFER_SIZE
 #define CONNBUFFER_SIZE 4096
-#endif 
+#endif
 
 /**
  * Timeout for ping. If there was no received message for this amount of time
@@ -37,136 +36,137 @@
 #define PING_TIMEOUT 5000
 #endif
 
-
-
 /**
  * Possible connection status for \ref ArduCastConnection
  */
-typedef enum channelConnection_t{
-  CH_DISCONNECTED,        ///< Disconnected. Either the TCP channel or the application
-  CH_NEEDS_PING,          ///< Timeout reached and a PING message should be sent. After successful PONG, \ref pinged() should be called to reset this state
-  CH_CONNECTED,           ///< Connected. Both TCP and application layer.
-}channelConnection_t;
+typedef enum channelConnection_t
+{
+  CH_DISCONNECTED, ///< Disconnected. Either the TCP channel or the application
+  CH_NEEDS_PING,   ///< Timeout reached and a PING message should be sent. After successful PONG, \ref pinged() should be called to reset this state
+  CH_CONNECTED,    ///< Connected. Both TCP and application layer.
+} channelConnection_t;
 
 /**
  * Class to maintain a chromecast connection channel. A typicial application
  * needs two:
  * One for the device and one for the application (casting) running on the
  * device.
- * 
+ *
  * Maintains a bare minimum for the connection. Doesn't write or read the
  * channel, but maintains timer for ping, holds a destination ID,
  * and provides a simpler function to write a protocol buffer message.
- * 
+ *
  * Typcially this is not needed from the application, only from
  * \ref ArduCastControl.
  */
-class ArduCastConnection {
-  private:
-    WiFiClientSecure& client;
-    const int keepAlive;
-    uint8_t *const writeBuffer;
-    const int writeBufferSize;
-    
-    channelConnection_t connectionStatus = CH_DISCONNECTED;
-    char destId[50];
-    unsigned long lastMsgAt = 0;
-    bool connected = false;
+class ArduCastConnection
+{
+private:
+  WiFiClientSecure &client;
+  const int keepAlive;
+  uint8_t *const writeBuffer;
+  const int writeBufferSize;
 
-    /**
-     * Encoder function required for protocol buffer encoding
-     */
-    static bool encode_string(pb_ostream_t *stream, const pb_field_iter_t *field, void * const *arg);
-  public:
-    /**
-     * Constructor
-     * \param[in] _client
-     *    Reference of already connected secure TCP client. Shared between
-     *    multiple classes
-     * \param[in] _keepAlive
-     *    Timeout ater CH_NEEDS_PING is set
-     * \param[in] _writeBuffer
-     *    Buffer to use by \ref writeMsg(). Shared between multiple classes
-     * \param[in] _writeBufferSize
-     *    Size of \ref _writeBuffer
-     */
-    ArduCastConnection(WiFiClientSecure &_client, int _keepAlive, uint8_t *_writeBuffer, int _writeBufferSize)
-      : client(_client), keepAlive(_keepAlive), writeBuffer(_writeBuffer), writeBufferSize(_writeBufferSize)
-      {};
-    
-    /**
-     * Connect to an application level channel. This will write a CONNECT
-     * message to the TCP channel.
-     * \param[in] destinationId
-     *    Destination to connect. This will be stored and used for every
-     *    subsecvent \ref writeMsg() as destination.
-     * \return 
-     *    0 on success, -1 if TCP channel is not open, -2 if protobuf encoding
-     *    failed, -3 if TCP channel didn't accept the whole message
-     */
-    int connect(const char* destinationId);
+  channelConnection_t connectionStatus = CH_DISCONNECTED;
+  char destId[50];
+  unsigned long lastMsgAt = 0;
+  bool connected = false;
 
-    /**
-     * Resets \ref CH_NEEDS_PING status. Should be called if a message is
-     * received on this channel.
-     */
-    void pinged();
+  /**
+   * Encoder function required for protocol buffer encoding
+   */
+  static bool encode_string(pb_ostream_t *stream, const pb_field_iter_t *field, void *const *arg);
 
-    /**
-     * Sets the status of the channel to \ref CH_DISCONNECT
-     * Should be called e.g. if DISCONNECT message was received.
-     */
-    void setDisconnect();
+public:
+  /**
+   * Constructor
+   * \param[in] _client
+   *    Reference of already connected secure TCP client. Shared between
+   *    multiple classes
+   * \param[in] _keepAlive
+   *    Timeout ater CH_NEEDS_PING is set
+   * \param[in] _writeBuffer
+   *    Buffer to use by \ref writeMsg(). Shared between multiple classes
+   * \param[in] _writeBufferSize
+   *    Size of \ref _writeBuffer
+   */
+  ArduCastConnection(WiFiClientSecure &_client, int _keepAlive, uint8_t *_writeBuffer, int _writeBufferSize)
+      : client(_client), keepAlive(_keepAlive), writeBuffer(_writeBuffer), writeBufferSize(_writeBufferSize){};
 
-    /**
-     * Returns the current connection status of this channel
-     * \return
-     *    The current connection status.
-     */
-    channelConnection_t getConnectionStatus();
+  /**
+   * Connect to an application level channel. This will write a CONNECT
+   * message to the TCP channel.
+   * \param[in] destinationId
+   *    Destination to connect. This will be stored and used for every
+   *    subsecvent \ref writeMsg() as destination.
+   * \return
+   *    0 on success, -1 if TCP channel is not open, -2 if protobuf encoding
+   *    failed, -3 if TCP channel didn't accept the whole message
+   */
+  int connect(const char *destinationId);
 
-    /**
-     * Returns the destination ID of this channel
-     * \return
-     *    Pointer to the destination ID string.
-     */
-    const char* getDestinationId();
+  /**
+   * Resets \ref CH_NEEDS_PING status. Should be called if a message is
+   * received on this channel.
+   */
+  void pinged();
 
-    /**
-     * Writes a message to this channel, to the stored destination ID
-     * \param[in] nameSpace
-     *    The namespace to write, e.g. urn:x-cast:com.google.cast.receiver
-     * \param[in] payload
-     *    The payload to write
-     * \return 
-     *    0 on success, -1 if TCP channel is not open, -2 if protobuf encoding
-     *    failed, -3 if TCP channel didn't accept the whole message
-     */
-    int writeMsg(const char* nameSpace, const char* payload);
+  /**
+   * Sets the status of the channel to \ref CH_DISCONNECT
+   * Should be called e.g. if DISCONNECT message was received.
+   */
+  void setDisconnect();
+
+  /**
+   * Returns the current connection status of this channel
+   * \return
+   *    The current connection status.
+   */
+  channelConnection_t getConnectionStatus();
+
+  /**
+   * Returns the destination ID of this channel
+   * \return
+   *    Pointer to the destination ID string.
+   */
+  const char *getDestinationId();
+
+  /**
+   * Writes a message to this channel, to the stored destination ID
+   * \param[in] nameSpace
+   *    The namespace to write, e.g. urn:x-cast:com.google.cast.receiver
+   * \param[in] payload
+   *    The payload to write
+   * \return
+   *    0 on success, -1 if TCP channel is not open, -2 if protobuf encoding
+   *    failed, -3 if TCP channel didn't accept the whole message
+   */
+  int writeMsg(const char *nameSpace, const char *payload);
 };
-
 
 /**
  * Possible connection status for \ref ArduCastControl
  */
-typedef enum connection_t{
-  DISCONNECTED,             ///< Disconnected. TCP channel is not open
-  TCPALIVE,                 ///< TCP is connected, but the application layer connection is not alive
-  CONNECTED,                ///< Both TCP and application layer is connected. No application is running on Chromecast
-  APPLICATION_RUNNING,      ///< Application is running on the chromecase (i.e. something is casting)
-  WAIT_FOR_RESPONSE,        ///< A message was sent and the response should be polled soon with a call to \ref loop()
-  CONNECT_TO_APPLICATION,   ///< Application is running, but connection is not yet established to it. \ref loop() should be called to connect
+typedef enum connection_t
+{
+  DISCONNECTED,           ///< Disconnected. TCP channel is not open
+  TCPALIVE,               ///< TCP is connected, but the application layer connection is not alive
+  CONNECTED,              ///< Both TCP and application layer is connected. No application is running on Chromecast
+  APPLICATION_RUNNING,    ///< Application is running on the chromecase (i.e. something is casting)
+  WAIT_FOR_RESPONSE,      ///< A message was sent and the response should be polled soon with a call to \ref loop()
+  CONNECT_TO_APPLICATION, ///< Application is running, but connection is not yet established to it. \ref loop() should be called to connect
 } connection_t;
 
 /**
  * Possible values for \ref playerState
  * See https://developers.google.com/cast/docs/reference/chrome/chrome.cast.media#.PlayerState
  */
-typedef enum playerState_t{
-  IDLE,                     ///< No media is loaded into the player.
-  PLAYING,                  ///< The media is playing.
-  PAUSED,                   ///< The media is not playing.
-  BUFFERING,                ///< Player is in PLAY mode but not actively playing content. currentTime will not change.
+typedef enum playerState_t
+{
+  IDLE,      ///< No media is loaded into the player.
+  PLAYING,   ///< The media is playing.
+  PAUSED,    ///< The media is not playing.
+  BUFFERING, ///< Player is in PLAY mode but not actively playing content. currentTime will not change.
 } playerState_t;
 
 /**
@@ -174,7 +174,8 @@ typedef enum playerState_t{
  * poll information from it, like what is currently cast to it and control
  * the playback/volume on it.
  */
-class ArduCastControl {
+class ArduCastControl
+{
 private:
   uint8_t connBuffer[CONNBUFFER_SIZE];
 
@@ -184,7 +185,7 @@ private:
   WiFiClientSecure client;
   uint8_t errorCount = 5;
 
-  //IPAddress ccAddress = IPAddress(192, 168, 1, 12);//FIXME 
+  // IPAddress ccAddress = IPAddress(192, 168, 1, 12);//FIXME
 
   /**
    * Channel connection to the chromecast device itself (receiver-0)
@@ -200,7 +201,7 @@ private:
    * Downloads a message from the TCP channel. Chromecast messages start with
    * the length coded in 4 bytes, this function will download based on that.
    * The length field will be included in the downloaded message.
-   * 
+   *
    * \param[out] buffer
    *    The buffer where the message will be written
    * \param[in] bufSize
@@ -210,7 +211,7 @@ private:
    * \param[in] timeout
    *    Timeout in ms. If a message can't be downloaded in this time, the
    *    client will be purged for remaining data and the function returns.
-   * \return 
+   * \return
    *    The amount of data read in bytes. 0 on timeout or if there's no data
    *    to read.
    */
@@ -219,7 +220,7 @@ private:
   /**
    * Helper function for \ref getRawMessage() to decode the length field of the
    * message. Does not read from the channel, it uses peek() functions.
-   * 
+   *
    * \param[in] client
    *    Reference to the client which should be a connected secure TCP client,
    *    with at least 4 bytes available to read.
@@ -248,9 +249,9 @@ private:
    * 32 bits, in which case the value is returned in \ref lengthOrValue.
    * It also supports length-delimited headers (e.g. strings), in which case
    * \ref lengthOrValue is the length. In this case, the sting/bytestream
-   * is not processed, but it can be easily accessed by 
+   * is not processed, but it can be easily accessed by
    * \ref bufferStart + ret.
-   * 
+   *
    * \param[in] bufferStart
    *    The buffer where processing should start. This should point to a
    *    protocol buffer header.
@@ -273,7 +274,7 @@ private:
   bool msgSent;
 
 public:
-  //stuff reported by chromecast's main channel
+  // stuff reported by chromecast's main channel
 
   /**
    * displayName reported by chromecast or "" if nothing is reported.
@@ -293,14 +294,14 @@ public:
    * Volume reported by chromecast or -1 if nothing is reported
    * Should be between 0 and 1.
    */
-  float volume; //0-1, -1 if nothing is reported
+  float volume; // 0-1, -1 if nothing is reported
 
   /**
    * True if chromecast reported muted status, false otherwise
    */
   bool isMuted;
 
-  //only valid when application is running, otherwise not even cleared
+  // only valid when application is running, otherwise not even cleared
 
   /**
    * playerState reported by the application or IDLE when nothing is reported
@@ -325,7 +326,7 @@ public:
    * Note that this is an UTF8 string
    */
   char title[200];
-  
+
   /**
    * Artist of song currently playing or "" if nothing is reported.
    * Note that this is an UTF8 string
@@ -335,26 +336,26 @@ public:
   /**
    * Constructor
    */
-  ArduCastControl(){}
+  ArduCastControl() {}
 
   /**
    * Connect to chromecast. First connects to the TCP/TLS port with
    * self-signed certificates allowed, then connects to the main channel
    * of the chromecast application layer.
-   * 
+   *
    * \param[in] host
    *    Host of the device to connect.
-   * 
-   * \return 
+   *
+   * \return
    *    0 on success, -1 if TCP channel is not open, -2 if protobuf encoding
    *    failed, -3 if TCP channel didn't accept the whole message, -10 if
    *    the TCP/TLS channel can't be opened.
    */
-  int connect(const char* host);
+  int connect(const char *host);
 
   /**
    * Returns the current connection status
-   * 
+   *
    * \return
    *    The current connection status
    */
@@ -388,8 +389,8 @@ public:
    * "D:<displayName>"
    * "S:<statusText>"
    * "A/T:<artist>/<title>"
-   * "S:<playerState> <duration>:<currentSeek>" 
-   * 
+   * "S:<playerState> <duration>:<currentSeek>"
+   *
    * When no application is running, only the volume line is printed.
    * <volume> is float, <muted> is M when muted, nothing otherwise.
    * Strings are printed as is, UTF8 special characters included
@@ -400,8 +401,8 @@ public:
 
   /**
    * Play command (e.g. to resume paused playback)
-   * 
-   * \return 
+   *
+   * \return
    *    0 on success, -1 if TCP channel is not open, -2 if protobuf encoding
    *    failed, -3 if TCP channel didn't accept the whole message, -10 if
    *    system is waiting for a response and -9 if the current media
@@ -415,7 +416,7 @@ public:
    *    If false, the function will send a PAUSE command
    *    If true, the function checks the current \ref playerState and send
    *    PAUSE if playing or PLAY if paused.
-   * \return 
+   * \return
    *    0 on success, -1 if TCP channel is not open, -2 if protobuf encoding
    *    failed, -3 if TCP channel didn't accept the whole message, -10 if
    *    system is waiting for a response and -9 if the current media
@@ -423,10 +424,12 @@ public:
    */
   int pause(bool toggle);
 
+  int cast(String mp3);
+
   /**
    * Previous command. Jumps to the beginning of track or previous track.
-   * 
-   * \return 
+   *
+   * \return
    *    0 on success, -1 if TCP channel is not open, -2 if protobuf encoding
    *    failed, -3 if TCP channel didn't accept the whole message, -10 if
    *    system is waiting for a response and -9 if the current media
@@ -437,7 +440,7 @@ public:
   /**
    * Next command. Jumps to the next track,
    *
-   * \return 
+   * \return
    *    0 on success, -1 if TCP channel is not open, -2 if protobuf encoding
    *    failed, -3 if TCP channel didn't accept the whole message, -10 if
    *    system is waiting for a response and -9 if the current media
@@ -452,8 +455,8 @@ public:
    *    \ref seekTo + \ref currentTime
    * \param[in] seekTo
    *    Position to seek to, either in relative or absolute
-   * 
-   * \return 
+   *
+   * \return
    *    0 on success, -1 if TCP channel is not open, -2 if protobuf encoding
    *    failed, -3 if TCP channel didn't accept the whole message, -10 if
    *    system is waiting for a response and -9 if the current media
@@ -468,8 +471,8 @@ public:
    *    \ref volumeTo + \ref volume
    * \param[in] volumeTo
    *    Volume to set, either in relative or absolute
-   * 
-   * \return 
+   *
+   * \return
    *    0 on success, -1 if TCP channel is not open, -2 if protobuf encoding
    *    failed, -3 if TCP channel didn't accept the whole message, -10 if
    *    system is waiting for a response.
@@ -483,13 +486,11 @@ public:
    *    Ignored if \ref toggle is set.
    * \param[in] toggle
    *    Unmute if currently muted, mute if currently unmuted
-   * 
-   * \return 
+   *
+   * \return
    *    0 on success, -1 if TCP channel is not open, -2 if protobuf encoding
    *    failed, -3 if TCP channel didn't accept the whole message, -10 if
    *    system is waiting for a response.
    */
   int setMute(bool newMute, bool toggle);
-
 };
-
